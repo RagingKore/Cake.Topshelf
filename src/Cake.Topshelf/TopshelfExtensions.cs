@@ -47,5 +47,27 @@ namespace Cake.Topshelf
                 .Using(context)
                 .StopService(serviceExecutablePath, instance);
         }
+
+        //[CakeMethodAlias]
+        //public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath)
+        //{
+        //    if (string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException("sourcePath");
+        //    if (string.IsNullOrWhiteSpace(deploymentPath)) throw new ArgumentNullException("deploymentPath");
+
+        //    TopshelfHelper
+        //        .Using(context)
+        //        .DeployService(sourcePath, deploymentPath);
+        //}
+
+        [CakeMethodAlias]
+        public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath, TopshelfSettings settings = null)
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException("sourcePath");
+            if (string.IsNullOrWhiteSpace(deploymentPath)) throw new ArgumentNullException("deploymentPath");
+
+            TopshelfHelper
+                .Using(context)
+                .DeployService(sourcePath, deploymentPath, settings);
+        }
     }
 }

@@ -22,6 +22,11 @@
         //-description      The service description the service should use when installing
         //-displayname      The display name the the service should use when installing
 
+        public TopshelfSettings()
+        {
+            Autostart = true;
+        }
+
         /// <summary>
         /// Gets or sets the username to run the service.
         /// </summary>
@@ -46,8 +51,6 @@
 
         public bool Disabled { get; set; }
 
-        //public bool Manual { get; set; }
-
         public bool Delayed { get; set; }
 
         public bool LocalSystem { get; set; }
@@ -55,10 +58,6 @@
         public bool LocalService { get; set; }
 
         public bool NetworkService { get; set; }
-
-        //public bool Interactive { get; set; }
-
-        //public bool Sudo { get; set; }
 
         public string ServiceName { get; set; }
 

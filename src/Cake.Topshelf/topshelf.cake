@@ -23,9 +23,9 @@
 // ARGUMENTS
 ///////////////////////////////////////////////////////////////////////////////
 
-var configuration   = Argument<string>("configuration", "Release");
-var sourcePath      = Argument<string>("sourcepath");
-var installPath     = Argument<string>("installpath");
+var configuration	= Argument<string>("configuration", "Release");
+var sourcePath		= Argument<string>("sourcepath");
+var deployPath		= Argument<string>("deploypath");
 var arguments       = Argument<string>("arguments", "--autostart --localservice");
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -35,17 +35,17 @@ var arguments       = Argument<string>("arguments", "--autostart --localservice"
 Task("Uninstall-Service")
     .WithCriteria(
         HasArgument("sourcepath") && 
-        HasArgument("installpath"))
+        HasArgument("deploypath"))
     .Does(() =>
 {
     Verbose("Arguments");
     Verbose(" -Source Path:     {0}", sourcePath);
-    Verbose(" -Install Path:    {0}", installPath);
+    Verbose(" -Deploy Path:		{0}", deployPath);
     Verbose(" -Arguments Path:  {0}", arguments);
 
-    if(DirectoryExists(installPath))
+    if(DirectoryExists(deployPath))
     {
-        var installedServiceExecutablePath = GetFiles(installPath + @"\*.exe").SingleOrDefault();
+        var installedServiceExecutablePath = GetFiles(deployPath + @"\*.exe").SingleOrDefault();
 
         if (installedServiceExecutablePath != null) 
         {
@@ -56,31 +56,31 @@ Task("Uninstall-Service")
         }
         else Information("Service executable not found. Skipping task...");    
     }
-    else Information("Instalation folder not found. Skipping task...");      
+    else Information("Deployment folder not found. Skipping task...");      
 });
 
-Task("Prepare-Installation-Folder")
+Task("Prepare-Deployment-Folder")
     .IsDependentOn("Uninstall-Service")
     .Does(() =>
 {
-    if (DirectoryExists(installPath)) 
+    if (DirectoryExists(deployPath)) 
     {
-        CleanDirectory(installPath);
-        Information("Installation folder cleaned.");
+        CleanDirectory(deployPath);
+        Information("Deployment folder cleaned.");
     }
     else 
     {
-        CreateDirectory(installPath);
-        Information("Installation folder created.");  
+        CreateDirectory(deployPath);
+        Information("Deployment folder created.");  
     }
 });
 
 Task("Copy-Files")
-    .IsDependentOn("Prepare-Installation-Folder")
+    .IsDependentOn("Prepare-Deployment-Folder")
     .Does(() =>
 {
-    CopyFiles(sourcePath + "*.*", installPath);
-    Information("Files copied to installation folder.");
+    CopyFiles(sourcePath + "*.*", deployPath);
+    Information("Files copied to deployment folder.");
 });
 
 Task("Install-Service")

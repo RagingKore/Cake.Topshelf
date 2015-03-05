@@ -1,4 +1,10 @@
-﻿using Cake.Core;
+﻿using System;
+using System.IO;
+using System.Linq;
+using Cake.Common;
+using Cake.Common.Diagnostics;
+using Cake.Common.IO;
+using Cake.Core;
 using Cake.Core.IO;
 using Cake.Core.IO.Arguments;
 
@@ -50,6 +56,71 @@ namespace Cake.Topshelf
             });
         }
 
+        public void DeployService(string sourcePath, string deploymentPath, TopshelfSettings settings = null)
+        {
+            // Uninstall service
+            this.cake.Debug("Uninstalling service...");
+
+            string searchPattern;
+
+            if (this.cake.DirectoryExists(deploymentPath))
+            {
+                searchPattern = System.IO.Path.Combine(deploymentPath, "*.exe");
+
+                this.cake.Verbose("Searching for service executable with pattern: {0}", searchPattern);
+
+                var installedServiceExecutablePath = this.cake.GetFiles(searchPattern).SingleOrDefault();
+
+                if (installedServiceExecutablePath != null)
+                {
+                    this.cake.Verbose("Service executable found: {0}", installedServiceExecutablePath);
+
+                    if (this.cake.StartProcess(installedServiceExecutablePath, new ProcessSettings { Arguments = "uninstall" }) < 0)
+                        throw new ApplicationException("Failed to uninstall service!");
+                }
+                else this.cake.Information("Service executable not found. Skipping uninstall...");
+            }
+            else this.cake.Information("Instalation folder not found. Skipping uninstall...");
+
+            // Prepare deployment folder
+            this.cake.Debug("Preparing deployment folder...");
+
+            if (this.cake.DirectoryExists(deploymentPath))
+            {
+                this.cake.CleanDirectory(deploymentPath);
+                this.cake.Information("Deployment folder cleaned.");
+            }
+            else
+            {
+                this.cake.CreateDirectory(deploymentPath);
+                this.cake.Information("Deployment folder created.");
+            }
+
+            // Copy Files
+            this.cake.Debug("Copying files to deployment folder...");
+            this.cake.CopyFiles(sourcePath + "*.*", deploymentPath);
+            this.cake.Information("Files copied to deployment folder.");
+
+            // Install Service
+            this.cake.Debug("Installing service...");
+
+            searchPattern = System.IO.Path.Combine(deploymentPath, "*.exe");
+
+            this.cake.Verbose("Searching for service executable with pattern: {0}", searchPattern);
+
+            var serviceExecutablePath = this.cake.GetFiles(searchPattern).SingleOrDefault();
+
+            if (serviceExecutablePath == null)
+                throw new FileNotFoundException("Failed to find service executable!", searchPattern);
+
+            this.cake.Verbose("Service executable found: {0}", serviceExecutablePath);
+
+            var args = GetArguments(settings ?? new TopshelfSettings());
+
+            if (this.cake.StartProcess(serviceExecutablePath, new ProcessSettings { Arguments = "install " + args }) < 0)
+                throw new Exception("Failed to install service!");
+        }
+
         private string GetArguments(TopshelfSettings settings)
         {
             var builder = new ProcessArgumentBuilder();
@@ -60,7 +131,7 @@ namespace Cake.Topshelf
                 builder.Append(new QuotedArgument(new TextArgument(settings.Username)));
             }
 
-            if (settings.Password != null)
+            if (!string.IsNullOrWhiteSpace(settings.Password))
             {
                 builder.Append(new TextArgument("-password"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.Password)));
@@ -72,10 +143,10 @@ namespace Cake.Topshelf
                 builder.Append(new QuotedArgument(new TextArgument(settings.Instance)));
             }
 
-            if(settings.Autostart)
-                builder.Append(new TextArgument("--autostart"));
-            else
-                builder.Append(new TextArgument("--manual"));
+            builder.Append(
+                settings.Autostart
+                    ? new TextArgument("--autostart")
+                    : new TextArgument("--manual"));
 
             if(settings.Disabled)
                 builder.Append(new TextArgument("--disabled"));
@@ -92,19 +163,19 @@ namespace Cake.Topshelf
             if(settings.NetworkService)
                 builder.Append(new TextArgument("--networkservice"));
 
-            if(string.IsNullOrWhiteSpace(settings.ServiceName))
+            if(!string.IsNullOrWhiteSpace(settings.ServiceName))
             {
                 builder.Append(new TextArgument("--servicename"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.Description)));
             }
 
-            if(string.IsNullOrWhiteSpace(settings.Description))
+            if(!string.IsNullOrWhiteSpace(settings.Description))
             {
                 builder.Append(new TextArgument("--description"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.Description)));
             }
 
-            if(string.IsNullOrWhiteSpace(settings.DisplayName))
+            if(!string.IsNullOrWhiteSpace(settings.DisplayName))
             {
                 builder.Append(new TextArgument("--displayname"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.DisplayName)));
