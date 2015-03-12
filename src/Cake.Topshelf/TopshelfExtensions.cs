@@ -19,7 +19,17 @@ namespace Cake.Topshelf
         }
 
         [CakeMethodAlias]
-        public static void UninstallService(this ICakeContext context, string serviceExecutablePath, string instance = null)
+        public static void UninstallService(this ICakeContext context, string serviceExecutablePath)
+        {
+            if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
+
+            TopshelfHelper
+                .Using(context)
+                .UninstallService(serviceExecutablePath);
+        }
+
+        [CakeMethodAlias]
+        public static void UninstallService(this ICakeContext context, string serviceExecutablePath, string instance)
         {
             if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
 
@@ -29,7 +39,17 @@ namespace Cake.Topshelf
         }
 
         [CakeMethodAlias]
-        public static void StartService(this ICakeContext context, string serviceExecutablePath, string instance = null)
+        public static void StartService(this ICakeContext context, string serviceExecutablePath)
+        {
+            if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
+
+            TopshelfHelper
+                .Using(context)
+                .StartService(serviceExecutablePath);
+        }
+
+        [CakeMethodAlias]
+        public static void StartService(this ICakeContext context, string serviceExecutablePath, string instance)
         {
             if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
 
@@ -39,7 +59,17 @@ namespace Cake.Topshelf
         }
 
         [CakeMethodAlias]
-        public static void StopService(this ICakeContext context, string serviceExecutablePath, string instance = null)
+        public static void StopService(this ICakeContext context, string serviceExecutablePath)
+        {
+            if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
+
+            TopshelfHelper
+                .Using(context)
+                .StopService(serviceExecutablePath);
+        }
+
+        [CakeMethodAlias]
+        public static void StopService(this ICakeContext context, string serviceExecutablePath, string instance)
         {
             if(string.IsNullOrWhiteSpace(serviceExecutablePath)) throw new ArgumentNullException("serviceExecutablePath");
 
@@ -48,22 +78,22 @@ namespace Cake.Topshelf
                 .StopService(serviceExecutablePath, instance);
         }
 
-        //[CakeMethodAlias]
-        //public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath)
-        //{
-        //    if (string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException("sourcePath");
-        //    if (string.IsNullOrWhiteSpace(deploymentPath)) throw new ArgumentNullException("deploymentPath");
-
-        //    TopshelfHelper
-        //        .Using(context)
-        //        .DeployService(sourcePath, deploymentPath);
-        //}
-
         [CakeMethodAlias]
-        public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath, TopshelfSettings settings = null)
+        public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath)
         {
             if (string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException("sourcePath");
             if (string.IsNullOrWhiteSpace(deploymentPath)) throw new ArgumentNullException("deploymentPath");
+
+            TopshelfHelper
+                .Using(context)
+                .DeployService(sourcePath, deploymentPath);
+        }
+
+        [CakeMethodAlias]
+        public static void DeployService(this ICakeContext context, string sourcePath, string deploymentPath, TopshelfSettings settings)
+        {
+            if(string.IsNullOrWhiteSpace(sourcePath)) throw new ArgumentNullException("sourcePath");
+            if(string.IsNullOrWhiteSpace(deploymentPath)) throw new ArgumentNullException("deploymentPath");
 
             TopshelfHelper
                 .Using(context)

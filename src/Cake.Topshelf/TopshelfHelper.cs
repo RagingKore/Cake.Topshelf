@@ -1,7 +1,5 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
-using Cake.Common;
 using Cake.Common.Diagnostics;
 using Cake.Common.IO;
 using Cake.Core;
@@ -12,48 +10,18 @@ namespace Cake.Topshelf
 {
     public sealed class TopshelfHelper
     {
+        private const int DefaultProcessTimeout = 10000;
+
         private readonly ICakeContext cake;
 
-        public static TopshelfHelper Using(ICakeContext cake)
-        {
-            return new TopshelfHelper(cake);
-        }
-
-        internal TopshelfHelper(ICakeContext cake)
+        public TopshelfHelper(ICakeContext cake)
         {
             this.cake = cake;
         }
 
-        public void InstallService(string serviceExecutablePath, TopshelfSettings settings)
+        public static TopshelfHelper Using(ICakeContext cake)
         {
-            this.cake.ProcessRunner.Start(serviceExecutablePath, new ProcessSettings
-            {
-                Arguments = "install " + (settings != null ? GetArguments(settings) : string.Empty)
-            });
-        }
-
-        public void UninstallService(string serviceExecutablePath, string instance = null)
-        {
-            this.cake.ProcessRunner.Start(serviceExecutablePath, new ProcessSettings
-            {
-                Arguments = "uninstall " + (instance ?? string.Empty)
-            });
-        }
-
-        public void StartService(string serviceExecutablePath, string instance = null)
-        {
-            this.cake.ProcessRunner.Start(serviceExecutablePath, new ProcessSettings
-            {
-                Arguments = "start " + (instance ?? string.Empty)
-            });
-        }
-
-        public void StopService(string serviceExecutablePath, string instance = null)
-        {
-            this.cake.ProcessRunner.Start(serviceExecutablePath, new ProcessSettings
-            {
-                Arguments = "stop " + (instance ?? string.Empty)
-            });
+            return new TopshelfHelper(cake);
         }
 
         public void DeployService(string sourcePath, string deploymentPath, TopshelfSettings settings = null)
@@ -61,22 +29,15 @@ namespace Cake.Topshelf
             // Uninstall service
             this.cake.Debug("Uninstalling service...");
 
-            string searchPattern;
-
-            if (this.cake.DirectoryExists(deploymentPath))
+            if(this.cake.DirectoryExists(deploymentPath))
             {
-                searchPattern = System.IO.Path.Combine(deploymentPath, "*.exe");
+                var installedServiceExecutablePath = this.FindFile(deploymentPath, "*.exe");
 
-                this.cake.Verbose("Searching for service executable with pattern: {0}", searchPattern);
-
-                var installedServiceExecutablePath = this.cake.GetFiles(searchPattern).SingleOrDefault();
-
-                if (installedServiceExecutablePath != null)
+                if(installedServiceExecutablePath != null)
                 {
                     this.cake.Verbose("Service executable found: {0}", installedServiceExecutablePath);
-
-                    if (this.cake.StartProcess(installedServiceExecutablePath, new ProcessSettings { Arguments = "uninstall" }) < 0)
-                        throw new ApplicationException("Failed to uninstall service!");
+                    this.StopService(installedServiceExecutablePath, settings != null ? settings.Instance : null);
+                    this.UninstallService(installedServiceExecutablePath, settings != null ? settings.Instance : null);
                 }
                 else this.cake.Information("Service executable not found. Skipping uninstall...");
             }
@@ -85,7 +46,7 @@ namespace Cake.Topshelf
             // Prepare deployment folder
             this.cake.Debug("Preparing deployment folder...");
 
-            if (this.cake.DirectoryExists(deploymentPath))
+            if(this.cake.DirectoryExists(deploymentPath))
             {
                 this.cake.CleanDirectory(deploymentPath);
                 this.cake.Information("Deployment folder cleaned.");
@@ -98,40 +59,79 @@ namespace Cake.Topshelf
 
             // Copy Files
             this.cake.Debug("Copying files to deployment folder...");
-            this.cake.CopyFiles(sourcePath + "*.*", deploymentPath);
+            this.cake.CopyFiles(sourcePath + "/*.*", deploymentPath);
             this.cake.Information("Files copied to deployment folder.");
 
             // Install Service
             this.cake.Debug("Installing service...");
 
-            searchPattern = System.IO.Path.Combine(deploymentPath, "*.exe");
+            var serviceExecutablePath = this.FindFile(deploymentPath, "*.exe");
 
-            this.cake.Verbose("Searching for service executable with pattern: {0}", searchPattern);
-
-            var serviceExecutablePath = this.cake.GetFiles(searchPattern).SingleOrDefault();
-
-            if (serviceExecutablePath == null)
-                throw new FileNotFoundException("Failed to find service executable!", searchPattern);
+            if(serviceExecutablePath == null)
+                throw new FileNotFoundException("Failed to find service executable!");
 
             this.cake.Verbose("Service executable found: {0}", serviceExecutablePath);
 
-            var args = GetArguments(settings ?? new TopshelfSettings());
+            this.InstallService(serviceExecutablePath, settings);
+        }
 
-            if (this.cake.StartProcess(serviceExecutablePath, new ProcessSettings { Arguments = "install " + args }) < 0)
-                throw new Exception("Failed to install service!");
+        public void InstallService(string serviceExecutablePath, TopshelfSettings settings)
+        {
+            this.cake.ProcessRunner.Start(
+                serviceExecutablePath, 
+                new ProcessSettings
+                {
+                    Timeout   = DefaultProcessTimeout, 
+                    Arguments = "install " + (settings != null
+                        ? this.GetArguments(settings)
+                        : string.Empty)
+                });
+        }
+
+        public void StartService(string serviceExecutablePath, string instance = null)
+        {
+            this.cake.ProcessRunner.Start(
+                serviceExecutablePath, 
+                new ProcessSettings
+                {
+                    Timeout   = DefaultProcessTimeout, 
+                    Arguments = "start " + (instance ?? string.Empty)
+                });
+        }
+
+        public void StopService(string serviceExecutablePath, string instance = null)
+        {
+            this.cake.ProcessRunner.Start(
+                serviceExecutablePath, 
+                new ProcessSettings
+                {
+                    Timeout   = DefaultProcessTimeout, 
+                    Arguments = "stop " + (instance ?? string.Empty)
+                });
+        }
+
+        public void UninstallService(string serviceExecutablePath, string instance = null)
+        {
+            this.cake.ProcessRunner.Start(
+                serviceExecutablePath, 
+                new ProcessSettings
+                {
+                    Timeout   = DefaultProcessTimeout, 
+                    Arguments = "uninstall " + (instance ?? string.Empty)
+                });
         }
 
         private string GetArguments(TopshelfSettings settings)
         {
             var builder = new ProcessArgumentBuilder();
 
-            if (!string.IsNullOrWhiteSpace(settings.Username))
+            if(!string.IsNullOrWhiteSpace(settings.Username))
             {
                 builder.Append(new TextArgument("-username"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.Username)));
             }
 
-            if (!string.IsNullOrWhiteSpace(settings.Password))
+            if(!string.IsNullOrWhiteSpace(settings.Password))
             {
                 builder.Append(new TextArgument("-password"));
                 builder.Append(new QuotedArgument(new TextArgument(settings.Password)));
@@ -182,6 +182,13 @@ namespace Cake.Topshelf
             }
 
             return builder.Render();
+        }
+
+        private string FindFile(string path, string searchPattern)
+        {
+            return Directory
+                .EnumerateFileSystemEntries(path, searchPattern)
+                .SingleOrDefault();
         }
     }
 }
