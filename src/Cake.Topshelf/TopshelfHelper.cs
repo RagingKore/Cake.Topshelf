@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 using Cake.Common.Diagnostics;
 using Cake.Common.IO;
@@ -77,48 +78,48 @@ namespace Cake.Topshelf
 
         public void InstallService(string serviceExecutablePath, TopshelfSettings settings)
         {
-            this.cake.ProcessRunner.Start(
-                serviceExecutablePath, 
-                new ProcessSettings
-                {
-                    Timeout   = DefaultProcessTimeout, 
-                    Arguments = "install " + (settings != null
-                        ? this.GetArguments(settings)
-                        : string.Empty)
-                });
+            this.ExecuteProcess(() => 
+                this.cake.ProcessRunner.Start(
+                    serviceExecutablePath, 
+                    new ProcessSettings
+                    {
+                        Arguments = "install " + (settings != null
+                            ? this.GetArguments(settings)
+                            : string.Empty)
+                    }));
         }
 
         public void StartService(string serviceExecutablePath, string instance = null)
         {
-            this.cake.ProcessRunner.Start(
-                serviceExecutablePath, 
-                new ProcessSettings
-                {
-                    Timeout   = DefaultProcessTimeout, 
-                    Arguments = "start " + (instance ?? string.Empty)
-                });
+            this.ExecuteProcess(() => 
+                this.cake.ProcessRunner.Start(
+                    serviceExecutablePath, 
+                    new ProcessSettings
+                    {
+                        Arguments = "start " + (instance ?? string.Empty)
+                    }));
         }
 
         public void StopService(string serviceExecutablePath, string instance = null)
         {
-            this.cake.ProcessRunner.Start(
-                serviceExecutablePath, 
-                new ProcessSettings
-                {
-                    Timeout   = DefaultProcessTimeout, 
-                    Arguments = "stop " + (instance ?? string.Empty)
-                });
+            this.ExecuteProcess(() => 
+                this.cake.ProcessRunner.Start(
+                    serviceExecutablePath, 
+                    new ProcessSettings
+                    {
+                        Arguments = "stop " + (instance ?? string.Empty)
+                    }));
         }
 
         public void UninstallService(string serviceExecutablePath, string instance = null)
         {
-            this.cake.ProcessRunner.Start(
-                serviceExecutablePath, 
-                new ProcessSettings
-                {
-                    Timeout   = DefaultProcessTimeout, 
-                    Arguments = "uninstall " + (instance ?? string.Empty)
-                });
+            this.ExecuteProcess(() => 
+                this.cake.ProcessRunner.Start(
+                    serviceExecutablePath,
+                    new ProcessSettings
+                    {
+                        Arguments = "uninstall " + (instance ?? string.Empty)
+                    }));
         }
 
         private string GetArguments(TopshelfSettings settings)
@@ -188,7 +189,22 @@ namespace Cake.Topshelf
         {
             return Directory
                 .EnumerateFileSystemEntries(path, searchPattern)
-                .SingleOrDefault();
+                .SingleOrDefault(filename => !filename.EndsWith("vshost.exe"));
+        }
+
+        private void ExecuteProcess(Func<IProcess> processor)
+        {
+            try
+            {
+                processor()
+                    .WaitForExit(DefaultProcessTimeout);
+            }
+            catch(Exception ex)
+            {
+                if(!(ex is TimeoutException)) throw;
+
+                this.cake.Warning("Process timed out!");
+            }
         }
     }
 }
